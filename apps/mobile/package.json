@@ -1,0 +1,29 @@
+{
+  "name": "@jungle-tribe/mobile",
+  "version": "0.0.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "dev": "expo start",
+    "web": "expo start --web",
+    "ios": "expo start --ios",
+    "android": "expo start --android",
+    "build": "expo export --platform all",
+    "typecheck": "tsc --noEmit",
+    "check:dependencies": "expo install --check"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "58.0.15",
+    "@jungle-tribe/ui": "workspace:*",
+    "expo": "58.0.17",
+    "expo-status-bar": "58.0.4",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-native": "0.88.0",
+    "react-native-web": "0.21.4"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "typescript": "6.0.3"
+  }
+}
