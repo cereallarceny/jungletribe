@@ -2,7 +2,7 @@
 
 A free plant collection manager and a marketplace for in-home plant care. The initial community is Nashville; the intended product supports nationwide access.
 
-This repository contains the application foundation and the product planning documents. The public landing page and consumer app shell are runnable. Accounts, collections, sitter onboarding, bookings, payments, and provider integrations are not implemented yet. The interfaces identify the product as coming soon.
+This repository contains the application foundation and the product planning documents. The Next.js and Expo entry points are runnable, neutral placeholders. Collaborative design in Figma comes before product UI implementation. Accounts, collections, sitter onboarding, bookings, payments, and provider integrations are not implemented yet. Both entry points identify the application foundation and state that product design is pending.
 
 ## Workspace
 
@@ -10,7 +10,6 @@ This repository contains the application foundation and the product planning doc
 | --------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `apps/mobile`   | Expo application for iOS, Android, and React Native Web                                                              |
 | `apps/platform` | Next.js App Router application for public pages and the first-party API; administration follows authorization design |
-| `packages/ui`   | Shared color tokens; native and browser components remain in their applications                                      |
 | `docs`          | Product requirements, commercial hypotheses, architecture intent, and agent conventions                              |
 
 `GET /api/health` reports process liveness only. It does not claim that the database, authentication, payments, or other providers are configured or healthy.
@@ -54,5 +53,7 @@ For a future Vercel deployment, the Next.js project root is `apps/platform`; Exp
 ## Product context
 
 Start with [the documentation index](docs/README.md). The [Jungle Tribe MVP delivery roadmap](https://github.com/cereallarceny/jungletribe/issues/2) tracks implementation epics, and the [MVP decision map](https://github.com/cereallarceny/jungletribe/issues/1) tracks questions that need resolving before the corresponding features can be built. Commercial demand, sitter eligibility thresholds, commission, and insurance coverage remain hypotheses or unresolved policies.
+
+Product UI work starts with [the collaborative Figma design session](https://github.com/cereallarceny/jungletribe/issues/23). The neutral entry points are scaffolding, not an approved visual direction.
 
 Dependency versions follow the [Expo SDK compatibility table](https://docs.expo.dev/versions/latest/), [Expo monorepo guidance](https://docs.expo.dev/guides/monorepos/), [Next.js installation guide](https://nextjs.org/docs/app/getting-started/installation), and [Turborepo task configuration](https://turborepo.com/docs/crafting-your-repository/configuring-tasks). Both applications declare the same React version to avoid duplicate React runtimes.

@@ -22,9 +22,6 @@ importers:
       "@expo/metro-runtime":
         specifier: 58.0.15
         version: 58.0.15(@expo/log-box@58.0.13)(expo@58.0.17)(react-dom@19.3.0(react@19.3.0))(react-native@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)
-      "@jungle-tribe/ui":
-        specifier: workspace:*
-        version: link:../../packages/ui
       expo:
         specifier: 58.0.17
         version: 58.0.17(@babel/core@7.29.7(supports-color@8.1.1))(@expo/dom-webview@58.0.2)(@expo/metro-runtime@58.0.15)(react-dom@19.3.0(react@19.3.0))(react-native-web@0.21.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-native@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1)(typescript@6.0.3)
@@ -53,9 +50,6 @@ importers:
 
   apps/platform:
     dependencies:
-      "@jungle-tribe/ui":
-        specifier: workspace:*
-        version: link:../../packages/ui
       next:
         specifier: 16.4.3
         version: 16.4.3(@babel/core@7.29.7(supports-color@8.1.1))(@types/node@24.19.2)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -75,12 +69,6 @@ importers:
       "@types/react-dom":
         specifier: 19.3.0
         version: 19.3.0(@types/react@19.3.0)
-      typescript:
-        specifier: 6.0.3
-        version: 6.0.3
-
-  packages/ui:
-    devDependencies:
       typescript:
         specifier: 6.0.3
         version: 6.0.3

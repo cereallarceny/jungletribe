@@ -1,6 +1,5 @@
 packages:
   - apps/*
-  - packages/*
 
 minimumReleaseAgeExclude:
   - "@next/env@16.4.3"
