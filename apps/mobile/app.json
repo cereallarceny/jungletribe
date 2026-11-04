@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Jungle Tribe",
+    "slug": "jungle-tribe",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "ios": {
+      "supportsTablet": true
+    },
+    "web": {
+      "bundler": "metro",
+      "name": "Jungle Tribe"
+    }
+  }
+}

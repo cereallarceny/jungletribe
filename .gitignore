@@ -1,1 +1,16 @@
 .DS_Store
+node_modules/
+.pnpm-store/
+.turbo/
+.next/
+.expo/
+dist/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.vercel/
+apps/mobile/android/
+apps/mobile/ios/
+*.log
