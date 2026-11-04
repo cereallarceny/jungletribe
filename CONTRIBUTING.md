@@ -21,3 +21,9 @@ Vercel projects in the Personal team:
 Production configuration uses production-scoped variables. Staging configuration uses preview variables scoped specifically to Git branch `staging`; feature previews do not inherit staging-specific values. `BETTER_AUTH_URL` is the API origin, `BETTER_AUTH_TRUSTED_ORIGINS` contains the corresponding website origin, and the website's `EXPO_PUBLIC_API_URL` is its matching API origin. The consumer client still needs to consume that API setting when implemented.
 
 Database credentials, auth secrets, OAuth callbacks, CORS/session behavior and dashboard connection must be configured and verified independently for each deployed environment. Development bootstrap credentials must not become production runtime credentials. Domain assignment and DNS verification do not prove that an application is deployed or that authentication works.
+
+## Expo project
+
+The consumer app is linked to [@cereallarceny/jungle-tribe](https://expo.dev/accounts/cereallarceny/projects/jungle-tribe), owned by the personal `cereallarceny` account. `apps/mobile/app.json` records owner `cereallarceny` and EAS project ID `c25ba917-bafa-4a10-a488-ad6d74191dfb`. Sign the EAS CLI into that account before running hosted builds. Project registration does not create native builds, store submissions or update channels.
+
+The two stable staging aliases allow anonymous requests so external authentication callbacks can reach them. Other feature previews retain Vercel protection. Application authentication and authorization must protect private data independently of Vercel deployment protection.

@@ -10,6 +10,12 @@
     "web": {
       "bundler": "metro",
       "name": "Jungle Tribe"
+    },
+    "owner": "cereallarceny",
+    "extra": {
+      "eas": {
+        "projectId": "c25ba917-bafa-4a10-a488-ad6d74191dfb"
+      }
     }
   }
 }
