@@ -23,7 +23,14 @@ function createAuth() {
       schemaName: "auth",
     },
     emailAndPassword: { enabled: false },
-    trustedOrigins: [new URL(baseURL).origin],
+    trustedOrigins: [
+      new URL(baseURL).origin,
+      ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? "")
+        .split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean)
+        .map((origin) => new URL(origin).origin),
+    ],
     telemetry: { enabled: false },
     plugins: process.env.BETTER_AUTH_API_KEY
       ? [
