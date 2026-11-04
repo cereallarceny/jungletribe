@@ -1,8 +1,8 @@
 # Jungle Tribe
 
-A free plant collection manager and a marketplace for in-home plant care. The initial community is Nashville; the intended product supports nationwide access.
+A free plant collection manager and a marketplace for in-home plant care. The app supports nationwide access; Nashville is the initial marketing focus.
 
-This repository contains the application foundation and the product planning documents. The Next.js and Expo entry points are runnable, neutral placeholders. Collaborative design in Figma comes before product UI implementation. Accounts, collections, sitter onboarding, bookings, payments, and provider integrations are not implemented yet. Both entry points identify the application foundation and state that product design is pending.
+This repository contains the application foundation and the product planning documents. The Next.js and Expo entry points are runnable, neutral placeholders. The November design handoff is complete, pending additional feedback from Bia. The first release is stable responsive-web Collections, followed by Find care as the second part of the MVP. Accounts, collections, sitter onboarding, bookings, payments, and provider integrations are not implemented yet. Both entry points identify the application foundation and the Collections implementation phase.
 
 ## Workspace
 
@@ -36,9 +36,9 @@ pnpm build
 
 ## Local development and provider setup
 
-The shells and builds do not need secrets. Before starting provider-backed development or database commands, link the correct Vercel project, provision the agreed integrations, pull the development environment into the consuming application, and verify required key names without printing their values.
+The shells and builds do not need secrets. Neon development access is established; environment identifiers, secret locations and connectivity evidence are recorded in [the Neon access resolution](https://github.com/cereallarceny/jungletribe/issues/4#issuecomment-6643891359). Local database credentials belong in the ignored server file `apps/platform/.env.local`. Before other provider-backed work, provision the agreed integration and verify required key names without printing their values. Hosted environments additionally require Vercel project linkage and environment-scoped secrets.
 
-After project linkage and environment verification:
+Start the scaffold locally:
 
 ```sh
 pnpm dev:platform   # Next.js, usually http://localhost:3000
@@ -52,8 +52,8 @@ For a future Vercel deployment, the Next.js project root is `apps/platform`; Exp
 
 ## Product context
 
-Start with [the documentation index](docs/README.md). The [Jungle Tribe MVP delivery roadmap](https://github.com/cereallarceny/jungletribe/issues/2) tracks implementation epics, and the [MVP decision map](https://github.com/cereallarceny/jungletribe/issues/1) tracks questions that need resolving before the corresponding features can be built. Commercial demand, sitter eligibility thresholds, commission, and insurance coverage remain hypotheses or unresolved policies.
+Start with [the documentation index](docs/README.md). The [Jungle Tribe MVP delivery roadmap](https://github.com/cereallarceny/jungletribe/issues/2) tracks implementation epics, and the [MVP decision map](https://github.com/cereallarceny/jungletribe/issues/1) tracks questions that need resolving before the corresponding features can be built. Use the current handoff index and resolved decision comments for approved policies; remaining choices stay visible in the map.
 
-Product UI work starts with [the collaborative Figma design session](https://github.com/cereallarceny/jungletribe/issues/23). The neutral entry points are scaffolding, not an approved visual direction.
+Product implementation follows [the November design handoff index](https://github.com/cereallarceny/jungletribe/issues/31) and its linked designs/specifications. Bia’s later feedback may revise them. The neutral entry points remain scaffolding.
 
 Dependency versions follow the [Expo SDK compatibility table](https://docs.expo.dev/versions/latest/), [Expo monorepo guidance](https://docs.expo.dev/guides/monorepos/), [Next.js installation guide](https://nextjs.org/docs/app/getting-started/installation), and [Turborepo task configuration](https://turborepo.com/docs/crafting-your-repository/configuring-tasks). Both applications declare the same React version to avoid duplicate React runtimes.

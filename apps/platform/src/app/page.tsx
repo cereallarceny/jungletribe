@@ -3,7 +3,9 @@ export default function Home() {
     <main>
       <h1>Jungle Tribe</h1>
       <h2>Application foundation</h2>
-      <p>Product design is pending collaborative work in Figma.</p>
+      <p>
+        Collections is the first release. Product implementation is in progress.
+      </p>
     </main>
   );
 }
