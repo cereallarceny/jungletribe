@@ -6,17 +6,25 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "auth:schema:generate": "node --env-file=.env.local scripts/auth-schema.mjs generate",
+    "auth:schema:check": "node --env-file=.env.local scripts/auth-schema.mjs check"
   },
   "dependencies": {
+    "@better-auth/infra": "0.4.26",
+    "better-auth": "1.7.17",
+    "kysely": "0.29.8",
     "next": "16.4.3",
+    "pg": "8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@types/node": "24.19.2",
+    "@types/pg": "8.23.1",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "auth": "1.7.17",
     "typescript": "6.0.3"
   }
 }
