@@ -1,7 +1,6 @@
-import { dash } from "@better-auth/infra";
-import { betterAuth } from "better-auth";
-import { PostgresDialect } from "kysely";
 import { Pool } from "pg";
+import { sendSignInCode } from "./email-code";
+import { createEmailCodeAuth } from "./email-code-auth";
 
 function createAuth() {
   const connectionString = process.env.DATABASE_URL;
@@ -11,18 +10,13 @@ function createAuth() {
     throw new Error("Better Auth server environment is incomplete.");
   }
 
-  return betterAuth({
-    appName: "Jungle Tribe",
+  return createEmailCodeAuth({
     baseURL,
     secret,
-    database: {
-      dialect: new PostgresDialect({
-        pool: new Pool({ connectionString, max: 5 }),
-      }),
-      type: "postgres",
-      schemaName: "auth",
-    },
-    emailAndPassword: { enabled: false },
+    pool: new Pool({ connectionString, max: 5 }),
+    sendCode: sendSignInCode,
+    dashboardKey: process.env.BETTER_AUTH_API_KEY,
+    vercel: process.env.VERCEL === "1",
     trustedOrigins: [
       new URL(baseURL).origin,
       ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? "")
@@ -31,15 +25,6 @@ function createAuth() {
         .filter(Boolean)
         .map((origin) => new URL(origin).origin),
     ],
-    telemetry: { enabled: false },
-    plugins: process.env.BETTER_AUTH_API_KEY
-      ? [
-          dash({
-            apiKey: process.env.BETTER_AUTH_API_KEY,
-            activityTracking: { enabled: false },
-          }),
-        ]
-      : [],
   });
 }
 
