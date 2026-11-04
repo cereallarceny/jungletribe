@@ -1,12 +1,14 @@
-import { toNextJsHandler } from "better-auth/next-js";
 import { getAuth } from "@/lib/auth";
+import { createAuthHandler } from "@/lib/auth-handler";
 
 export const runtime = "nodejs";
 
-export function GET(request: Request) {
-  return toNextJsHandler(getAuth()).GET(request);
+function handle(request: Request) {
+  const auth = getAuth();
+  return createAuthHandler(
+    auth,
+    auth.options.trustedOrigins as string[],
+  )(request);
 }
 
-export function POST(request: Request) {
-  return toNextJsHandler(getAuth()).POST(request);
-}
+export { handle as GET, handle as POST, handle as OPTIONS };

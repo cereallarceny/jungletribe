@@ -1,0 +1,288 @@
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { after, before, test } from "node:test";
+import { Pool } from "pg";
+import { createAuthHandler } from "../src/lib/auth-handler";
+import { createEmailCodeAuth } from "../src/lib/email-code-auth";
+
+const connectionString =
+  process.env.AUTH_TEST_DATABASE_URL ??
+  (process.env.AUTH_TEST_USE_DEVELOPMENT === "1"
+    ? process.env.DATABASE_URL_UNPOOLED
+    : undefined);
+if (!connectionString) throw new Error("AUTH_TEST_DATABASE_URL is required.");
+const pool = new Pool({ connectionString, max: 5 });
+const schema = `auth_test_${randomUUID().replaceAll("-", "")}`;
+const origin = "https://app.test.invalid";
+const baseURL = "https://api.test.invalid";
+const deliveries: { email: string; code: string }[] = [];
+let rejectDelivery = false;
+let ip = 1;
+
+function server() {
+  return createAuthHandler(
+    createEmailCodeAuth({
+      pool,
+      schema,
+      secret: "test-only-secret-with-at-least-thirty-two-characters",
+      baseURL,
+      trustedOrigins: [origin, baseURL],
+      vercel: true,
+      async sendCode(email, code) {
+        if (rejectDelivery) throw new Error("Test delivery failure.");
+        deliveries.push({ email, code });
+      },
+    }),
+    [origin, baseURL],
+  );
+}
+let handle = server();
+
+before(async () => {
+  for (const name of ["0001_auth.sql", "0002_email_code_limits.sql"]) {
+    const sql = await readFile(
+      new URL(`../migrations/${name}`, import.meta.url),
+      "utf8",
+    );
+    await pool.query(sql.replaceAll('"auth"', `"${schema}"`));
+  }
+});
+
+after(async () => {
+  try {
+    await pool.query(`DROP SCHEMA "${schema}" CASCADE`);
+  } finally {
+    await pool.end();
+  }
+});
+
+function request(
+  path: string,
+  body?: object,
+  cookie?: string,
+  clientIP?: string,
+) {
+  return new Request(`${baseURL}/api/auth${path}`, {
+    method: body ? "POST" : "GET",
+    headers: {
+      Origin: origin,
+      "Content-Type": "application/json",
+      "x-vercel-forwarded-for": clientIP ?? `192.0.2.${ip++}`,
+      ...(cookie ? { Cookie: cookie } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+}
+function send(email: string) {
+  return handle(
+    request("/email-otp/send-verification-otp", { email, type: "sign-in" }),
+  );
+}
+function verify(email: string, otp: string) {
+  return handle(request("/sign-in/email-otp", { email, otp }));
+}
+function codeFor(email: string) {
+  const delivery = deliveries.findLast((item) => item.email === email);
+  assert.ok(delivery);
+  assert.match(delivery.code, /^\d{6}$/);
+  return delivery.code;
+}
+function sessionCookie(response: Response) {
+  const value = response.headers
+    .getSetCookie()
+    .find((cookie) => cookie.includes("session_token="));
+  assert.ok(value);
+  assert.match(value, /HttpOnly/i);
+  assert.match(value, /Secure/i);
+  assert.match(value, /SameSite=Lax/i);
+  assert.doesNotMatch(value, /Domain=/i);
+  return value.split(";")[0] as string;
+}
+
+test("email code proves ownership, starts a secure session, and cannot be replayed", async () => {
+  const email = "collector@example.com";
+  assert.equal((await send(email)).status, 200);
+  const code = codeFor(email);
+  const response = await verify(email, code);
+  assert.equal(response.status, 200);
+  const cookie = sessionCookie(response);
+  const session = await (
+    await handle(request("/get-session", undefined, cookie))
+  ).json();
+  assert.equal(session.user.email, email);
+  assert.equal(session.user.emailVerified, true);
+  assert.equal(session.user.role, undefined);
+  assert.equal((await verify(email, code)).status, 400);
+  assert.equal((await handle(request("/sign-out", {}, cookie))).status, 200);
+  assert.equal(
+    await (await handle(request("/get-session", undefined, cookie))).json(),
+    null,
+  );
+});
+
+test("resend cooldown is atomic across instances and does not invalidate the first code", async () => {
+  const email = "cooldown@example.com";
+  const results = await Promise.all([send(email), send(email)]);
+  assert.deepEqual(
+    results.map((response) => response.status).sort(),
+    [200, 429],
+  );
+  const code = codeFor(email);
+  handle = server();
+  assert.equal((await send("COOLDOWN@example.com")).status, 429);
+  assert.equal(deliveries.filter((item) => item.email === email).length, 1);
+  assert.equal((await verify(email, code)).status, 200);
+});
+
+test("five wrong attempts exhaust a code", async () => {
+  const email = "attempts@example.com";
+  await send(email);
+  const code = codeFor(email);
+  const wrong = code === "000000" ? "999999" : "000000";
+  for (let attempt = 0; attempt < 5; attempt++) {
+    assert.equal((await verify(email, wrong)).status, 400);
+  }
+  assert.notEqual((await verify(email, code)).status, 200);
+});
+
+test("expired codes cannot authenticate", async () => {
+  const email = "expired@example.com";
+  await send(email);
+  const code = codeFor(email);
+  // Arrange time-expired persisted state without a ten-minute test delay.
+  await pool.query(
+    `UPDATE "${schema}"."verification" SET "expiresAt" = now() - interval '1 minute'`,
+  );
+  assert.equal((await verify(email, code)).status, 400);
+});
+
+test("sign out everywhere revokes two independent sessions", async () => {
+  const email = "sessions@example.com";
+  await send(email);
+  const first = sessionCookie(await verify(email, codeFor(email)));
+  await pool.query(
+    `UPDATE "${schema}"."emailCodeDelivery" SET "lastSentAt" = now() - interval '61 seconds'`,
+  );
+  await send(email);
+  const second = sessionCookie(await verify(email, codeFor(email)));
+  assert.equal(
+    (await handle(request("/revoke-sessions", {}, second))).status,
+    200,
+  );
+  for (const cookie of [first, second]) {
+    assert.equal(
+      await (await handle(request("/get-session", undefined, cookie))).json(),
+      null,
+    );
+  }
+});
+
+test("exact website origins receive credentialed CORS; untrusted origins cannot request codes", async () => {
+  const response = await handle(
+    new Request(`${baseURL}/api/auth/get-session`, {
+      method: "OPTIONS",
+      headers: { Origin: origin },
+    }),
+  );
+  assert.equal(response.status, 204);
+  assert.equal(response.headers.get("Access-Control-Allow-Origin"), origin);
+  assert.equal(
+    response.headers.get("Access-Control-Allow-Credentials"),
+    "true",
+  );
+  const malicious = request("/email-otp/send-verification-otp", {
+    email: "blocked@example.com",
+    type: "sign-in",
+  });
+  malicious.headers.set("Origin", "https://app.test.invalid.evil.example");
+  assert.equal((await handle(malicious)).status, 403);
+  assert.ok(!deliveries.some((item) => item.email === "blocked@example.com"));
+});
+
+test("per-IP send limits persist across server instances", async () => {
+  const clientIP = "198.51.100.1";
+  for (let i = 0; i < 5; i++) {
+    const response = await handle(
+      request(
+        "/email-otp/send-verification-otp",
+        {
+          email: `iplimit${i}@example.com`,
+          type: "sign-in",
+        },
+        undefined,
+        clientIP,
+      ),
+    );
+    assert.equal(response.status, 200);
+  }
+  handle = server();
+  const response = await handle(
+    request(
+      "/email-otp/send-verification-otp",
+      {
+        email: "iplimitblocked@example.com",
+        type: "sign-in",
+      },
+      undefined,
+      clientIP,
+    ),
+  );
+  assert.equal(response.status, 429);
+});
+
+test("provider failure does not report successful delivery", async () => {
+  rejectDelivery = true;
+  try {
+    assert.equal((await send("delivery-failure@example.com")).status, 503);
+  } finally {
+    rejectDelivery = false;
+  }
+});
+
+test("only one concurrent verification can consume the same code", async () => {
+  const email = "concurrent@example.com";
+  await send(email);
+  const code = codeFor(email);
+  const results = await Promise.all([verify(email, code), verify(email, code)]);
+  assert.equal(results.filter((response) => response.status === 200).length, 1);
+});
+
+test("recipient hourly quota survives a new server instance", async () => {
+  const email = "hourly@example.com";
+  for (let count = 0; count < 5; count++) {
+    assert.equal((await send(email)).status, 200);
+    await pool.query(
+      `UPDATE "${schema}"."emailCodeDelivery" SET "lastSentAt" = now() - interval '61 seconds'`,
+    );
+  }
+  handle = server();
+  assert.equal((await send(email)).status, 429);
+  assert.equal(deliveries.filter((item) => item.email === email).length, 5);
+});
+
+test("password and unimplemented code purposes cannot create usable login paths", async () => {
+  assert.equal(
+    (
+      await handle(
+        request("/email-otp/send-verification-otp", {
+          email: "purposes@example.com",
+          type: "forget-password",
+        }),
+      )
+    ).status,
+    400,
+  );
+  assert.notEqual(
+    (
+      await handle(
+        request("/sign-up/email", {
+          email: "password@example.com",
+          password: "password1234",
+          name: "Collector",
+        }),
+      )
+    ).status,
+    200,
+  );
+});

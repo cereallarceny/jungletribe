@@ -25,5 +25,6 @@ minimumReleaseAgeExclude:
 nodeLinker: isolated
 # Turbopack resolves dependencies within the workspace root.
 enableGlobalVirtualStore: false
-onlyBuiltDependencies:
-  - sharp
+allowBuilds:
+  sharp: true
+  esbuild: true
