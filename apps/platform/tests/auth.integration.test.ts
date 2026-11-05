@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { after, before, test } from "node:test";
 import { Pool } from "pg";
+import { createAdminHandler } from "../src/lib/admin-handler";
 import { createAuthHandler } from "../src/lib/auth-handler";
 import { createEmailCodeAuth } from "../src/lib/email-code-auth";
 
@@ -20,27 +21,32 @@ const deliveries: { email: string; code: string }[] = [];
 let rejectDelivery = false;
 let ip = 1;
 
-function server() {
-  return createAuthHandler(
-    createEmailCodeAuth({
-      pool,
-      schema,
-      secret: "test-only-secret-with-at-least-thirty-two-characters",
-      baseURL,
-      trustedOrigins: [origin, baseURL],
-      vercel: true,
-      async sendCode(email, code) {
-        if (rejectDelivery) throw new Error("Test delivery failure.");
-        deliveries.push({ email, code });
-      },
-    }),
-    [origin, baseURL],
-  );
+let currentAuth: ReturnType<typeof createEmailCodeAuth>;
+function server(superadminEmail = "owner@example.com") {
+  currentAuth = createEmailCodeAuth({
+    pool,
+    schema,
+    secret: "test-only-secret-with-at-least-thirty-two-characters",
+    baseURL,
+    trustedOrigins: [origin, baseURL],
+    vercel: true,
+    superadminEmail,
+    async sendCode(email, code) {
+      if (rejectDelivery) throw new Error("Test delivery failure.");
+      deliveries.push({ email, code });
+    },
+  });
+  return createAuthHandler(currentAuth, [origin, baseURL]);
 }
 let handle = server();
 
 before(async () => {
-  for (const name of ["0001_auth.sql", "0002_email_code_limits.sql"]) {
+  for (const name of [
+    "0001_auth.sql",
+    "0002_email_code_limits.sql",
+    "0003_superadmin_mfa.sql",
+    "0004_admin_totp_replay.sql",
+  ]) {
     const sql = await readFile(
       new URL(`../migrations/${name}`, import.meta.url),
       "utf8",
@@ -284,5 +290,221 @@ test("password and unimplemented code purposes cannot create usable login paths"
       )
     ).status,
     200,
+  );
+});
+
+function adminRequest(
+  cookie?: string,
+  email = "owner@example.com",
+  protectedResource = true,
+) {
+  return createAdminHandler(
+    {
+      getSession: (headers) => currentAuth.api.getSession({ headers }),
+      pool,
+      schema,
+      email,
+      origins: [origin],
+    },
+    protectedResource,
+  )(
+    new Request(`${baseURL}/api/admin/access`, {
+      headers: { Origin: origin, ...(cookie ? { Cookie: cookie } : {}) },
+    }),
+  );
+}
+
+// Independent RFC 6238 client fixture, not the server's TOTP generator.
+function authenticatorCode(uri: string) {
+  const secret = new URL(uri).searchParams.get("secret");
+  assert.ok(secret);
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const bits = [...secret.replace(/=+$/, "")]
+    .map((character) =>
+      alphabet.indexOf(character).toString(2).padStart(5, "0"),
+    )
+    .join("");
+  const bytes = Buffer.from(
+    (bits.match(/.{8}/g) ?? []).map((byte) => Number.parseInt(byte, 2)),
+  );
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30_000)));
+  const digest = createHmac("sha1", bytes).update(counter).digest();
+  const offset = (digest[digest.length - 1] ?? 0) & 15;
+  return String(
+    (digest.readUInt32BE(offset) & 0x7fffffff) % 1_000_000,
+  ).padStart(6, "0");
+}
+
+test("superadmin requires a verified second factor bound to the session, with one-use recovery", async () => {
+  handle = server();
+  const email = "owner@example.com";
+  assert.equal((await adminRequest()).status, 401);
+  await send(email);
+  let cookie = sessionCookie(await verify(email, codeFor(email)));
+  assert.equal((await adminRequest(cookie)).status, 403);
+  const enrollment = await handle(
+    request("/two-factor/enable", { method: "totp" }, cookie),
+  );
+  assert.equal(enrollment.status, 200);
+  const setup = await enrollment.json();
+  assert.equal((await adminRequest(cookie)).status, 403);
+  const usedTotp = authenticatorCode(setup.totpURI);
+  const factor = await handle(
+    request("/two-factor/verify-totp", { code: usedTotp }, cookie),
+  );
+  assert.equal(factor.status, 200);
+  cookie = sessionCookie(factor);
+  assert.equal((await adminRequest(cookie)).status, 200);
+  assert.equal((await (await adminRequest(cookie)).json()).role, "superadmin");
+  await pool.query(
+    `UPDATE "${schema}"."adminSession" SET "verifiedAt" = now() - interval '16 minutes'`,
+  );
+  assert.equal((await adminRequest(cookie)).status, 403);
+  assert.equal(
+    (await handle(request("/two-factor/get-totp-uri", {}, cookie))).status,
+    403,
+  );
+  assert.equal(
+    (await handle(request("/two-factor/disable", {}, cookie))).status,
+    403,
+  );
+  assert.equal(
+    (await handle(request("/two-factor/generate-backup-codes", {}, cookie)))
+      .status,
+    403,
+  );
+  await pool.query(
+    `UPDATE "${schema}"."emailCodeDelivery" SET "lastSentAt" = now() - interval '61 seconds'`,
+  );
+  await send(email);
+  const newCookie = sessionCookie(await verify(email, codeFor(email)));
+  assert.equal((await adminRequest(newCookie)).status, 403);
+  assert.equal(
+    (
+      await handle(
+        request("/two-factor/verify-totp", { code: usedTotp }, newCookie),
+      )
+    ).status,
+    401,
+  );
+  assert.equal((await adminRequest(newCookie)).status, 403);
+  assert.equal(
+    (
+      await handle(
+        request(
+          "/two-factor/verify-backup-code",
+          { code: setup.backupCodes[0] },
+          newCookie,
+        ),
+      )
+    ).status,
+    200,
+  );
+  assert.equal((await adminRequest(newCookie)).status, 200);
+  assert.notEqual(
+    (
+      await handle(
+        request(
+          "/two-factor/verify-backup-code",
+          { code: setup.backupCodes[0] },
+          newCookie,
+        ),
+      )
+    ).status,
+    200,
+  );
+  await handle(request("/sign-out", {}, newCookie));
+  assert.equal((await adminRequest(newCookie)).status, 401);
+});
+
+test("a regular collector cannot enroll admin MFA or self-assign the grant", async () => {
+  handle = server();
+  const email = "regular@example.com";
+  await send(email);
+  const response = await handle(
+    request("/sign-in/email-otp", {
+      email,
+      otp: codeFor(email),
+      role: "superadmin",
+      twoFactorEnabled: true,
+    }),
+  );
+  const cookie = sessionCookie(response);
+  assert.equal((await adminRequest(cookie)).status, 403);
+  assert.equal(
+    (await handle(request("/two-factor/enable", { method: "totp" }, cookie)))
+      .status,
+    403,
+  );
+});
+
+test("factor guesses are bounded across sessions and changing IP addresses", async () => {
+  const email = "attempt-owner@example.com";
+  handle = server(email);
+  await send(email);
+  const cookie = sessionCookie(await verify(email, codeFor(email)));
+  const enrollment = await handle(
+    request("/two-factor/enable", { method: "totp" }, cookie),
+  );
+  assert.equal(enrollment.status, 200);
+  for (let i = 0; i < 5; i++) {
+    assert.notEqual(
+      (
+        await handle(
+          request("/two-factor/verify-totp", { code: "invalid" }, cookie),
+        )
+      ).status,
+      200,
+    );
+  }
+  handle = server(email);
+  assert.equal(
+    (
+      await handle(
+        request("/two-factor/verify-totp", { code: "123456" }, cookie),
+      )
+    ).status,
+    429,
+  );
+  assert.equal((await adminRequest(cookie, email)).status, 403);
+});
+
+test("native-style origin and cookie requests authenticate without a web cookie jar", async () => {
+  handle = server();
+  const email = "native@example.com";
+  const sendRequest = request("/email-otp/send-verification-otp", {
+    email,
+    type: "sign-in",
+  });
+  sendRequest.headers.delete("Origin");
+  sendRequest.headers.set("expo-origin", "jungletribe://");
+  // The factory trusts only the explicitly registered app scheme.
+  const nativeAuth = createEmailCodeAuth({
+    pool,
+    schema,
+    secret: "native-test-secret-at-least-thirty-two-characters",
+    baseURL,
+    trustedOrigins: ["jungletribe://"],
+    sendCode: async (to, code) => {
+      deliveries.push({ email: to, code });
+    },
+    vercel: true,
+  });
+  const nativeHandler = createAuthHandler(nativeAuth, ["jungletribe://"]);
+  assert.equal((await nativeHandler(sendRequest)).status, 200);
+  const verifyRequest = request("/sign-in/email-otp", {
+    email,
+    otp: codeFor(email),
+  });
+  verifyRequest.headers.delete("Origin");
+  verifyRequest.headers.set("expo-origin", "jungletribe://");
+  const cookie = sessionCookie(await nativeHandler(verifyRequest));
+  const readRequest = request("/get-session", undefined, cookie);
+  readRequest.headers.delete("Origin");
+  readRequest.headers.set("expo-origin", "jungletribe://");
+  assert.equal(
+    (await (await nativeHandler(readRequest)).json()).user.email,
+    email,
   );
 });

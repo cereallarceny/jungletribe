@@ -21,6 +21,7 @@ minimumReleaseAgeExclude:
   - "@better-auth/telemetry@1.7.17"
   - better-auth@1.7.17
   - auth@1.7.17
+  - "@better-auth/expo@1.7.17"
 
 nodeLinker: isolated
 # Turbopack resolves dependencies within the workspace root.

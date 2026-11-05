@@ -16,6 +16,13 @@
       "eas": {
         "projectId": "c25ba917-bafa-4a10-a488-ad6d74191dfb"
       }
-    }
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-web-browser",
+      "expo-font",
+      "expo-image"
+    ],
+    "scheme": "jungletribe"
   }
 }
