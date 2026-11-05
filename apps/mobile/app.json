@@ -9,7 +9,8 @@
     },
     "web": {
       "bundler": "metro",
-      "name": "Jungle Tribe"
+      "name": "Jungle Tribe",
+      "favicon": "./assets/auth/jungletribe-icon.png"
     },
     "owner": "cereallarceny",
     "extra": {

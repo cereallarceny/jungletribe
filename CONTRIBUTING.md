@@ -18,7 +18,7 @@ Vercel projects in the Personal team:
 - `jungletribe-api`: Next.js platform/API, root `apps/platform`, build `pnpm build`, Functions region `iad1` near Neon US East 1.
 - Both use Node.js 24 and workspace installation with the frozen lockfile.
 
-Production configuration uses production-scoped variables. Staging configuration uses preview variables scoped specifically to Git branch `staging`; feature previews do not inherit staging-specific values. `BETTER_AUTH_URL` is the API origin, `BETTER_AUTH_TRUSTED_ORIGINS` contains the corresponding website origin, and the website's `EXPO_PUBLIC_API_URL` is its matching API origin. The consumer client still needs to consume that API setting when implemented.
+Production configuration uses production-scoped variables. Staging configuration uses preview variables scoped specifically to Git branch `staging`; feature previews do not inherit staging-specific values. `BETTER_AUTH_URL` is the API origin, `BETTER_AUTH_TRUSTED_ORIGINS` contains the corresponding website origin, and the website's `EXPO_PUBLIC_API_URL` is its matching API origin. The consumer client uses EXPO_PUBLIC_API_URL for its environment-specific Better Auth API connection.
 
 Database credentials, auth secrets, OAuth callbacks, CORS/session behavior and dashboard connection must be configured and verified independently for each deployed environment. Development bootstrap credentials must not become production runtime credentials. Domain assignment and DNS verification do not prove that an application is deployed or that authentication works.
 
