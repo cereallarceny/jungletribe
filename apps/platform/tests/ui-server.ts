@@ -43,6 +43,11 @@ async function main() {
     baseURL: "http://localhost:3001",
     trustedOrigins: [origin],
     superadminEmail: "owner@example.test",
+    // Visual fixture only; these cannot authorize with Google.
+    google: {
+      clientId: "fixture.apps.googleusercontent.com",
+      clientSecret: "fixture-only-secret",
+    },
     async sendCode(email, code) {
       if (!email.endsWith("@example.test"))
         throw new Error("Synthetic fixture identities only.");
@@ -50,6 +55,10 @@ async function main() {
     },
   });
   const handle = createAuthHandler(auth, [origin]);
+  const providers = createAuthHandler(
+    { handler: async () => Response.json({ google: true }) },
+    [origin],
+  );
   const admin = createAdminHandler({
     getSession: (headers) => auth.api.getSession({ headers }),
     pool,
@@ -80,9 +89,11 @@ async function main() {
           ? { body: Buffer.concat(chunks).toString("utf8") }
           : {}),
       });
-      const response = await (incoming.url?.startsWith("/api/admin/")
-        ? admin
-        : handle)(request);
+      const response = await (incoming.url === "/api/auth/providers"
+        ? providers
+        : incoming.url?.startsWith("/api/admin/")
+          ? admin
+          : handle)(request);
       outgoing.statusCode = response.status;
       response.headers.forEach((value, key) => {
         if (key !== "set-cookie") outgoing.setHeader(key, value);

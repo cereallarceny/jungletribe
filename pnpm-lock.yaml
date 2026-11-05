@@ -28,6 +28,9 @@ importers:
       "@expo-google-fonts/barlow-condensed":
         specifier: 0.4.1
         version: 0.4.1
+      "@expo-google-fonts/google-sans":
+        specifier: 0.4.4
+        version: 0.4.4
       "@expo-google-fonts/ibm-plex-mono":
         specifier: 0.4.1
         version: 0.4.1
@@ -1373,6 +1376,12 @@ packages:
     resolution:
       {
         integrity: sha512-ARAwBvQFGxOt2dfoQRVDRZghaStrXTIyI7oBD6/J4z2Iyr+0ME2HJq13RFhTuagCFrT4iapzuKHwOR3iLrNJrA==,
+      }
+
+  "@expo-google-fonts/google-sans@0.4.4":
+    resolution:
+      {
+        integrity: sha512-6lx67hqW5HDZEHu4tY0DBr3OlTrCjrbMLITQMeykX6GeXVAtjSC34ShqjkFHELAQD0cmykfGK+GzHWjjo3TRDQ==,
       }
 
   "@expo-google-fonts/ibm-plex-mono@0.4.1":
@@ -6640,6 +6649,8 @@ snapshots:
   "@expo-google-fonts/barlow-condensed@0.4.1": {}
 
   "@expo-google-fonts/barlow@0.4.1": {}
+
+  "@expo-google-fonts/google-sans@0.4.4": {}
 
   "@expo-google-fonts/ibm-plex-mono@0.4.1": {}
 

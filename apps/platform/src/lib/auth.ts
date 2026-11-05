@@ -17,6 +17,10 @@ function createAuth() {
   if (!connectionString || !secret || !baseURL) {
     throw new Error("Better Auth server environment is incomplete.");
   }
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  if (Boolean(clientId) !== Boolean(clientSecret))
+    throw new Error("Google authentication environment is incomplete.");
 
   return createEmailCodeAuth({
     baseURL,
@@ -26,6 +30,7 @@ function createAuth() {
     dashboardKey: process.env.BETTER_AUTH_API_KEY,
     vercel: process.env.VERCEL === "1",
     superadminEmail: process.env.SUPERADMIN_EMAIL,
+    google: clientId && clientSecret ? { clientId, clientSecret } : undefined,
     trustedOrigins: [
       new URL(baseURL).origin,
       ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? "")

@@ -37,6 +37,7 @@ export const assets = {
   next: require("../../assets/auth/arrow-right.svg"),
   mail: require("../../assets/auth/mail.svg"),
   logo: require("../../assets/auth/logo-patch.svg"),
+  google: require("../../assets/auth/google-g.png"),
 };
 export const typography = StyleSheet.create({
   heading: {
@@ -101,7 +102,7 @@ export function AuthButton({
   children: string;
   onPress?: () => void;
   disabled?: boolean;
-  variant?: "signal" | "primary" | "outline";
+  variant?: "signal" | "primary" | "outline" | "google";
   icon?: number;
 }) {
   return (
@@ -112,21 +113,30 @@ export function AuthButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
+        variant === "google" && {
+          backgroundColor: "#ffffff",
+          paddingHorizontal: Platform.OS === "ios" ? 16 : 12,
+          gap: Platform.OS === "ios" ? 12 : 10,
+        },
         variant === "primary"
           ? styles.primary
-          : variant === "outline"
+          : variant === "outline" || variant === "google"
             ? styles.outline
             : styles.signal,
         disabled && { opacity: 0.5 },
         pressed && { opacity: 0.8 },
       ]}
     >
-      {variant === "outline" && (
+      {(variant === "outline" || variant === "google") && (
         <View
           pointerEvents="none"
           style={[
             StyleSheet.absoluteFill,
-            { borderWidth: 1.5, borderColor: palette.bark, borderRadius: 4 },
+            {
+              borderWidth: variant === "google" ? 1 : 1.5,
+              borderColor: variant === "google" ? "#747775" : palette.bark,
+              borderRadius: 4,
+            },
           ]}
         />
       )}
@@ -142,6 +152,14 @@ export function AuthButton({
         style={[
           styles.buttonText,
           variant === "primary" && { color: palette.paper },
+          variant === "google" && {
+            fontFamily: "GoogleSans_500Medium",
+            color: "#1f1f1f",
+            fontSize: 14,
+            lineHeight: 20,
+            letterSpacing: 0,
+            flex: 1,
+          },
         ]}
       >
         {children}

@@ -3,6 +3,7 @@ import { Barlow_500Medium } from "@expo-google-fonts/barlow/500Medium";
 import { Barlow_600SemiBold } from "@expo-google-fonts/barlow/600SemiBold";
 import { BarlowCondensed_700Bold } from "@expo-google-fonts/barlow-condensed/700Bold";
 import { BarlowCondensed_800ExtraBold } from "@expo-google-fonts/barlow-condensed/800ExtraBold";
+import { GoogleSans_500Medium } from "@expo-google-fonts/google-sans/500Medium";
 import { IBMPlexMono_500Medium } from "@expo-google-fonts/ibm-plex-mono/500Medium";
 import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
@@ -49,6 +50,7 @@ export default function App() {
     BarlowCondensed_700Bold,
     BarlowCondensed_800ExtraBold,
     IBMPlexMono_500Medium,
+    GoogleSans_500Medium,
   });
   return (
     <SafeAreaProvider>

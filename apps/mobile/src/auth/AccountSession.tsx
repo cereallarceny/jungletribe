@@ -13,6 +13,11 @@ import {
   TextAction,
   typography,
 } from "./components";
+import {
+  startGoogle,
+  useGoogleAvailable,
+  useGoogleCallbackError,
+} from "./google";
 
 type AdminStatus = Awaited<ReturnType<typeof getAdminStatus>>;
 
@@ -27,6 +32,38 @@ export function AccountSession({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
+  const googleAvailable = useGoogleAvailable();
+  const googleError = useGoogleCallbackError();
+  const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (googleError) setError(googleError);
+  }, [googleError]);
+  useEffect(() => {
+    if (!googleAvailable) return;
+    let cancelled = false;
+    authClient
+      .listAccounts()
+      .then((result) => {
+        if (cancelled) return;
+        if (result.error)
+          setError(
+            "We couldn't check connected sign-in methods. Reopen the app to try again.",
+          );
+        else
+          setGoogleConnected(
+            result.data.some((account) => account.providerId === "google"),
+          );
+      })
+      .catch(() => {
+        if (!cancelled)
+          setError(
+            "We couldn't check connected sign-in methods. Reopen the app to try again.",
+          );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [googleAvailable]);
   useEffect(() => {
     let cancelled = false;
     setAdmin(null);
@@ -67,6 +104,29 @@ export function AccountSession({
       setBusy(false);
     }
   }
+  async function connectGoogle() {
+    if (lock.current || !googleAvailable) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await startGoogle(true);
+      const result = await authClient.listAccounts();
+      if (!result.error)
+        setGoogleConnected(
+          result.data.some((account) => account.providerId === "google"),
+        );
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "We couldn't connect Google. Try again.",
+      );
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
   return (
     <AuthShell>
       <View style={{ gap: 12 }}>
@@ -81,6 +141,31 @@ export function AccountSession({
       {admin?.candidate && (
         <SuperadminMFA status={admin} reload={reload} refresh={refresh} />
       )}
+      {googleAvailable &&
+        (googleConnected ? (
+          <Copy small>Google is connected to your account.</Copy>
+        ) : (
+          <>
+            <AuthButton
+              onPress={connectGoogle}
+              disabled={
+                busy ||
+                googleConnected === null ||
+                admin === null ||
+                (admin.candidate && !admin.verified)
+              }
+              variant="google"
+              icon={assets.google}
+            >
+              Connect Google
+            </AuthButton>
+            <Copy small>
+              {admin?.candidate && !admin.verified
+                ? "Verify administrator access above before connecting Google."
+                : "Connect the Google account with the same verified email address. Email sign-in will remain available."}
+            </Copy>
+          </>
+        ))}
       {Boolean(error) && (
         <>
           <Copy small error>

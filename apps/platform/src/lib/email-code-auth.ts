@@ -18,6 +18,7 @@ type EmailCodeAuthOptions = {
   dashboardKey?: string;
   vercel?: boolean;
   superadminEmail?: string;
+  google?: { clientId: string; clientSecret: string };
 };
 
 export function createEmailCodeAuth(options: EmailCodeAuthOptions) {
@@ -45,7 +46,34 @@ export function createEmailCodeAuth(options: EmailCodeAuthOptions) {
       schemaName: schema,
     },
     emailAndPassword: { enabled: false },
-    account: { accountLinking: { enabled: false } },
+    socialProviders: options.google
+      ? {
+          google: {
+            ...options.google,
+            prompt: "select_account",
+            accessType: "online",
+            includeGrantedScopes: false,
+          },
+        }
+      : {},
+    account: {
+      encryptOAuthTokens: true,
+      accountLinking: {
+        enabled: Boolean(options.google),
+        disableImplicitLinking: true,
+        trustedProviders: [],
+        allowDifferentEmails: false,
+      },
+    },
+    user: {
+      validateUserInfo({ user, source }) {
+        if (source.method === "oauth" && user.emailVerified !== true)
+          throw new APIError("UNAUTHORIZED", {
+            code: "GOOGLE_EMAIL_UNVERIFIED",
+            message: "Use a verified Google email address.",
+          });
+      },
+    },
     trustedOrigins: options.trustedOrigins,
     session: {
       expiresIn: 60 * 60 * 24 * 7,
@@ -72,6 +100,32 @@ export function createEmailCodeAuth(options: EmailCodeAuthOptions) {
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
         await adminPolicy.before(ctx);
+        if (
+          (ctx.path === "/sign-in/social" || ctx.path === "/link-social") &&
+          ctx.body?.provider === "google"
+        ) {
+          const scopes = ctx.body.scopes;
+          if (
+            ctx.body.additionalParams &&
+            Object.keys(ctx.body.additionalParams).length
+          )
+            throw new APIError("FORBIDDEN", {
+              message:
+                "Custom Google authorization parameters are unavailable.",
+            });
+          if (
+            scopes !== undefined &&
+            (!Array.isArray(scopes) ||
+              scopes.some(
+                (scope: unknown) =>
+                  typeof scope !== "string" ||
+                  !["openid", "email", "profile"].includes(scope),
+              ))
+          )
+            throw new APIError("FORBIDDEN", {
+              message: "Only basic Google sign-in is available.",
+            });
+        }
         if (ctx.path !== "/email-otp/send-verification-otp") return;
         if (ctx.body?.type !== "sign-in") {
           throw new APIError("BAD_REQUEST", {
@@ -125,6 +179,7 @@ export function createEmailCodeAuth(options: EmailCodeAuthOptions) {
       }),
     },
     disabledPaths: [
+      "/unlink-account",
       "/email-otp/check-verification-otp",
       "/email-otp/verify-email",
       "/email-otp/request-password-reset",

@@ -51,6 +51,26 @@ export function createSuperadminPolicy(
 ) {
   return {
     before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path === "/link-social") {
+        const session = await getAuthoritativeSessionFromCtx(ctx);
+        if (!session?.user.emailVerified)
+          throw new APIError("FORBIDDEN", {
+            message: "Sign in with a verified email before connecting Google.",
+          });
+        const owner =
+          options.email &&
+          session.user.email.toLowerCase() === options.email.toLowerCase();
+        if (owner) {
+          if (!(await getSuperadminStatus(options, session)).verified)
+            throw new APIError("FORBIDDEN", {
+              message: "Verify administrator access before connecting Google.",
+            });
+        } else if (Date.now() - session.session.createdAt.getTime() > 600_000) {
+          throw new APIError("FORBIDDEN", {
+            message: "Sign out and sign in again before connecting Google.",
+          });
+        }
+      }
       if (!ctx.path.startsWith("/two-factor/")) return;
       const session = await getAuthoritativeSessionFromCtx(ctx);
       if (
