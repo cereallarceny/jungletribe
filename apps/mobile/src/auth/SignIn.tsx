@@ -12,6 +12,11 @@ import {
   TextAction,
   typography,
 } from "./components";
+import {
+  startGoogle,
+  useGoogleAvailable,
+  useGoogleCallbackError,
+} from "./google";
 import { Welcome } from "./Welcome";
 
 export function SignIn() {
@@ -20,7 +25,14 @@ export function SignIn() {
   const [sentTo, setSentTo] = useState("");
   const [code, setCode] = useState("");
   const [message, setMessage] = useState("");
-  const [operation, setOperation] = useState<"send" | "verify" | null>(null);
+  const [operation, setOperation] = useState<
+    "send" | "verify" | "google" | null
+  >(null);
+  const googleAvailable = useGoogleAvailable();
+  const googleError = useGoogleCallbackError();
+  useEffect(() => {
+    if (googleError) setMessage(googleError);
+  }, [googleError]);
   const busy = operation !== null;
   const [resendAt, setResendAt] = useState(0);
   const [now, setNow] = useState(Date.now());
@@ -62,6 +74,24 @@ export function SignIn() {
     setResendAt(Date.now() + 60_000);
     setNow(Date.now());
     setStep("code");
+  }
+  async function googleSignIn() {
+    if (locked.current || !googleAvailable) return;
+    locked.current = true;
+    setOperation("google");
+    setMessage("");
+    try {
+      await startGoogle();
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "We couldn't open Google. Try again or use email.",
+      );
+    } finally {
+      locked.current = false;
+      setOperation(null);
+    }
   }
   async function send() {
     if (locked.current || !apiURL) return;
@@ -149,10 +179,21 @@ export function SignIn() {
           <AuthButton disabled variant="primary">
             Continue with Apple
           </AuthButton>
-          <AuthButton disabled variant="outline">
-            Continue with Google
+          <AuthButton
+            disabled={!googleAvailable || busy}
+            onPress={googleSignIn}
+            variant="google"
+            icon={assets.google}
+          >
+            {operation === "google"
+              ? "Opening Google…"
+              : "Continue with Google"}
           </AuthButton>
-          <Copy small>Apple and Google sign-in are coming soon.</Copy>
+          <Copy small>
+            {googleAvailable
+              ? "Apple sign-in is coming soon."
+              : "Apple and Google sign-in are being set up."}
+          </Copy>
           <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
             <View
               style={{ flex: 1, height: 1, backgroundColor: palette.stone }}
@@ -181,7 +222,7 @@ export function SignIn() {
             onPress={send}
             icon={assets.mail}
           >
-            {busy ? "Sending your code…" : "Email me a code"}
+            {operation === "send" ? "Sending your code…" : "Email me a code"}
           </AuthButton>
           <Copy small>No passwords. We’ll send a 6-digit code instead.</Copy>
         </>
