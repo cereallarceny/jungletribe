@@ -168,7 +168,7 @@ export function SignIn() {
             onSubmit={send}
             disabled={busy}
           />
-          {message && (
+          {Boolean(message) && (
             <Copy small error>
               {message}
             </Copy>
@@ -194,7 +194,7 @@ export function SignIn() {
             disabled={busy}
             invalid={Boolean(message)}
           />
-          {message && (
+          {Boolean(message) && (
             <Copy small error>
               {message}
             </Copy>
