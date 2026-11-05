@@ -45,6 +45,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
+      - run: pnpm --filter @jungle-tribe/mobile test
       - run: pnpm --filter @jungle-tribe/platform test:auth
       - run: pnpm --filter @jungle-tribe/mobile check:dependencies
       - run: pnpm build
