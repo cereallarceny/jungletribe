@@ -81,7 +81,7 @@ export function AccountSession({
       {admin?.candidate && (
         <SuperadminMFA status={admin} reload={reload} refresh={refresh} />
       )}
-      {error && (
+      {Boolean(error) && (
         <>
           <Copy small error>
             {error}
@@ -321,7 +321,7 @@ function SuperadminMFA({
           )}
         </>
       )}
-      {message && (
+      {Boolean(message) && (
         <Copy small error>
           {message}
         </Copy>
