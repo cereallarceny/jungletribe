@@ -20,7 +20,8 @@ export function SignIn() {
   const [sentTo, setSentTo] = useState("");
   const [code, setCode] = useState("");
   const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [operation, setOperation] = useState<"send" | "verify" | null>(null);
+  const busy = operation !== null;
   const [resendAt, setResendAt] = useState(0);
   const [now, setNow] = useState(Date.now());
   const locked = useRef(false);
@@ -71,7 +72,7 @@ export function SignIn() {
     }
     if (step === "code" && remaining > 0) return;
     locked.current = true;
-    setBusy(true);
+    setOperation("send");
     setMessage("");
     try {
       await deliver(destination);
@@ -83,13 +84,13 @@ export function SignIn() {
       );
     } finally {
       locked.current = false;
-      setBusy(false);
+      setOperation(null);
     }
   }
   async function verify() {
     if (locked.current || !/^\d{6}$/.test(code)) return;
     locked.current = true;
-    setBusy(true);
+    setOperation("verify");
     setMessage("");
     try {
       const result = await authClient.signIn.emailOtp({
@@ -113,7 +114,7 @@ export function SignIn() {
       );
     } finally {
       locked.current = false;
-      setBusy(false);
+      setOperation(null);
     }
   }
   if (step === "welcome")
@@ -207,9 +208,11 @@ export function SignIn() {
             }}
           >
             <TextAction onPress={send} disabled={busy || remaining > 0}>
-              {remaining > 0
-                ? `Resend code in ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`
-                : "Resend code"}
+              {operation === "send"
+                ? "Sending code…"
+                : remaining > 0
+                  ? `Resend code in ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`
+                  : "Resend code"}
             </TextAction>
             <TextAction
               disabled={busy}
@@ -227,7 +230,7 @@ export function SignIn() {
             disabled={busy || !/^\d{6}$/.test(code)}
             icon={assets.next}
           >
-            {busy ? "Checking your code…" : "Continue"}
+            {operation === "verify" ? "Checking your code…" : "Continue"}
           </AuthButton>
           <Copy small>
             Can’t find it? Check spam, or the Promotions tab if you’re a Gmail
