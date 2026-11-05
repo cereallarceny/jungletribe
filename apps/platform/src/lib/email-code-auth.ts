@@ -1,10 +1,12 @@
 import { createHmac } from "node:crypto";
+import { expo } from "@better-auth/expo";
 import { dash } from "@better-auth/infra";
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
-import { emailOTP } from "better-auth/plugins";
+import { emailOTP, twoFactor } from "better-auth/plugins";
 import { PostgresDialect } from "kysely";
 import type { Pool } from "pg";
+import { createSuperadminPolicy } from "./superadmin";
 
 type EmailCodeAuthOptions = {
   pool: Pool;
@@ -15,6 +17,7 @@ type EmailCodeAuthOptions = {
   sendCode: (email: string, code: string) => Promise<void>;
   dashboardKey?: string;
   vercel?: boolean;
+  superadminEmail?: string;
 };
 
 export function createEmailCodeAuth(options: EmailCodeAuthOptions) {
@@ -25,6 +28,12 @@ export function createEmailCodeAuth(options: EmailCodeAuthOptions) {
     Request,
     { email: string; code: string }
   >();
+  const adminPolicy = createSuperadminPolicy({
+    pool: options.pool,
+    schema,
+    email: options.superadminEmail,
+    secret: options.secret,
+  });
 
   return betterAuth({
     appName: "Jungle Tribe",
@@ -62,6 +71,7 @@ export function createEmailCodeAuth(options: EmailCodeAuthOptions) {
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        await adminPolicy.before(ctx);
         if (ctx.path !== "/email-otp/send-verification-otp") return;
         if (ctx.body?.type !== "sign-in") {
           throw new APIError("BAD_REQUEST", {
@@ -97,6 +107,7 @@ export function createEmailCodeAuth(options: EmailCodeAuthOptions) {
         }
       }),
       after: createAuthMiddleware(async (ctx) => {
+        await adminPolicy.after(ctx);
         if (!ctx.request) return;
         const delivery = pendingDelivery.get(ctx.request);
         if (!delivery) return;
@@ -124,6 +135,12 @@ export function createEmailCodeAuth(options: EmailCodeAuthOptions) {
     ],
     telemetry: { enabled: false },
     plugins: [
+      expo(),
+      twoFactor({
+        issuer: "Jungle Tribe",
+        allowPasswordless: true,
+        backupCodeOptions: { storeBackupCodes: "encrypted" },
+      }),
       emailOTP({
         otpLength: 6,
         expiresIn: 600,

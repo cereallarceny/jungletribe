@@ -13,12 +13,27 @@
     "check:dependencies": "expo install --check"
   },
   "dependencies": {
+    "@better-auth/expo": "1.7.17",
+    "@expo-google-fonts/barlow": "0.4.1",
+    "@expo-google-fonts/barlow-condensed": "0.4.1",
+    "@expo-google-fonts/ibm-plex-mono": "0.4.1",
     "@expo/metro-runtime": "58.0.17",
+    "better-auth": "1.7.17",
     "expo": "58.0.23",
+    "expo-constants": "~58.0.15",
+    "expo-font": "~58.0.11",
+    "expo-image": "~58.0.18",
+    "expo-linking": "~58.0.16",
+    "expo-network": "~58.0.4",
+    "expo-secure-store": "~58.0.2",
     "expo-status-bar": "58.0.4",
+    "expo-web-browser": "~58.0.7",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.1",
+    "react-native-qrcode-svg": "6.3.52",
+    "react-native-safe-area-context": "~5.11.1",
+    "react-native-svg": "15.16.0",
     "react-native-web": "0.21.4"
   },
   "devDependencies": {

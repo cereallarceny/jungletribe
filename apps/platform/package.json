@@ -13,6 +13,7 @@
     "test:auth:local": "AUTH_TEST_USE_DEVELOPMENT=1 node --env-file=.env.local --import tsx --test tests/*.test.ts"
   },
   "dependencies": {
+    "@better-auth/expo": "1.7.17",
     "@better-auth/infra": "0.4.26",
     "better-auth": "1.7.17",
     "kysely": "0.29.8",
