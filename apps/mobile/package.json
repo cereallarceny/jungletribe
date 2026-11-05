@@ -10,7 +10,8 @@
     "android": "expo start --android",
     "build": "expo export --platform all",
     "typecheck": "tsc --noEmit",
-    "check:dependencies": "expo install --check"
+    "check:dependencies": "expo install --check",
+    "test": "node --import tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@better-auth/expo": "1.7.17",
@@ -37,7 +38,11 @@
     "react-native-web": "0.21.4"
   },
   "devDependencies": {
+    "@types/jsdom": "30.0.0",
     "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "jsdom": "29.1.1",
+    "tsx": "4.23.15",
     "typescript": "6.0.3"
   }
 }

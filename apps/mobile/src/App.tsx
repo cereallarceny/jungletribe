@@ -11,26 +11,33 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AccountSession } from "./auth/AccountSession";
 import { apiURL, authClient } from "./auth/client";
 import { AuthShell, Copy, palette } from "./auth/components";
+import { SessionLoadingBoundary } from "./auth/SessionLoadingBoundary";
 import { SignIn } from "./auth/SignIn";
 
 function SessionApp() {
   const session = authClient.useSession();
-  if (session.isPending)
-    return (
-      <AuthShell>
-        <ActivityIndicator
-          color={palette.olive}
-          accessibilityLabel="Checking your session"
-        />
-      </AuthShell>
-    );
-  if (!session.data) return <SignIn />;
   return (
-    <AccountSession
-      email={session.data.user.email}
-      key={session.data.session.id}
-      refresh={session.refetch}
-    />
+    <SessionLoadingBoundary
+      pending={session.isPending}
+      fallback={
+        <AuthShell>
+          <ActivityIndicator
+            color={palette.olive}
+            accessibilityLabel="Checking your session"
+          />
+        </AuthShell>
+      }
+    >
+      {session.data ? (
+        <AccountSession
+          email={session.data.user.email}
+          key={session.data.session.id}
+          refresh={session.refetch}
+        />
+      ) : (
+        <SignIn />
+      )}
+    </SessionLoadingBoundary>
   );
 }
 
